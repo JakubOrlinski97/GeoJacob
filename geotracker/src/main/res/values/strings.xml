@@ -1,0 +1,14 @@
+<resources>
+
+    <string name="prompt_email">ID</string>
+    <string name="prompt_password">Password</string>
+    <string name="action_sign_in">Sign in or register</string>
+    <string name="action_sign_in_short">Sign in</string>
+    <string name="error_invalid_email">This email address is invalid</string>
+    <string name="error_invalid_password">This password is too short</string>
+    <string name="error_incorrect_password">This password is incorrect</string>
+    <string name="error_field_required">This field is required</string>
+    <string name="service_description">A service that sends your location to the central server.</string>
+    <string name="general_badness">The ID or password are wrong.</string>
+    <string name="title_activity_login">Sign In</string>
+</resources>
