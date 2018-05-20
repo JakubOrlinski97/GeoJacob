@@ -19,6 +19,7 @@ import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 /**
  * A login screen that offers login via ID/password.
@@ -28,11 +29,13 @@ public class LoginActivity extends AppCompatActivity {
     // UI references.
     private EditText mIDView;
     private EditText mPasswordView;
+    private EditText mIPView;
     private View mProgressView;
     private View mLoginFormView;
     private NetworkGPSService mService;
-    private boolean mBound;
     private IBinder mBinder;
+    private boolean mShouldUnbind;
+    private String ipAddress;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -45,14 +48,17 @@ public class LoginActivity extends AppCompatActivity {
         // Set up the login form.
         mPasswordView = (EditText) findViewById(R.id.password);
         mIDView = (EditText) findViewById(R.id.email);
+        mIPView = (EditText) findViewById(R.id.ip_address);
 
         mPasswordView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
                 if (id == EditorInfo.IME_ACTION_DONE || id == EditorInfo.IME_NULL) {
+                    Toast.makeText(getBaseContext(), "Logging in", Toast.LENGTH_SHORT).show();
                     attemptLogin();
                     return true;
                 }
+                Toast.makeText(getBaseContext(), "Returning false", Toast.LENGTH_SHORT).show();
                 return false;
             }
         });
@@ -65,11 +71,10 @@ public class LoginActivity extends AppCompatActivity {
             }
         });
 
-        mLoginFormView = findViewById(R.id.login_form);
+        mLoginFormView = findViewById(R.id.email_login_form);
         mProgressView = findViewById(R.id.login_progress);
 
-        Intent intent = new Intent(this, NetworkGPSService.class);
-        bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
+        doBindService(ipAddress);
     }
 
 
@@ -79,10 +84,6 @@ public class LoginActivity extends AppCompatActivity {
      * errors are presented and no actual login attempt is made.
      */
     private void attemptLogin() {
-        if (mService == null) {
-            Intent intent = new Intent(this, NetworkGPSService.class);
-            bindService(intent, mConnection, Context.BIND_AUTO_CREATE);
-        }
         // Reset errors.
         mIDView.setError(null);
         mPasswordView.setError(null);
@@ -90,6 +91,9 @@ public class LoginActivity extends AppCompatActivity {
         // Store values at the time of the login attempt.
         String ID = mIDView.getText().toString();
         String password = mPasswordView.getText().toString();
+        ipAddress = mIPView.getText().toString();
+        Toast.makeText(getBaseContext(), "The IP Address: " + ipAddress, Toast.LENGTH_SHORT).show();
+        doBindService(ipAddress);
 
         boolean cancel = false;
         View focusView = null;
@@ -116,7 +120,6 @@ public class LoginActivity extends AppCompatActivity {
             // There was an error; don't attempt login and focus the first
             // form field with an error.
             focusView.requestFocus();
-            mService.unbindService(mConnection);
         } else {
             // Show a progress spinner, and kick off a background task to
             // perform the user login attempt.
@@ -129,6 +132,11 @@ public class LoginActivity extends AppCompatActivity {
                     e.printStackTrace();
                 }
             }
+            if (ID.contains("@")) {
+                ID = ID.split("@")[0];
+            }
+
+            mService.connect(ipAddress);
             mService.sendMessage("login", ID + " " + password);
             String welcome = mService.receiveMessage();
 
@@ -142,7 +150,9 @@ public class LoginActivity extends AppCompatActivity {
 
             Intent mainActivity = new Intent(getApplicationContext(), MainActivity.class);
             mainActivity.putExtra("ID", ID);
+            mainActivity.putExtra("IP", ipAddress);
             startActivity(mainActivity);
+            doUnbindService();
             finish();
         }
     }
@@ -184,6 +194,7 @@ public class LoginActivity extends AppCompatActivity {
         });
     }
 
+    private boolean mBound;
     /**
      * Class for interacting with the main interface of the service.
      */
@@ -205,5 +216,34 @@ public class LoginActivity extends AppCompatActivity {
             mBound = false;
         }
     };
+
+    void doBindService(String ipAddress) {
+        // Attempts to establish a connection with the service.  We use an
+        // explicit class name because we want a specific service
+        // implementation that we know will be running in our own process
+        // (and thus won't be supporting component replacement by other
+        // applications).
+
+        Intent intent = new Intent(this, NetworkGPSService.class);
+        intent.putExtra("IP", ipAddress);
+        Toast.makeText(getBaseContext(), "The IP Address in doBind: " + ipAddress, Toast.LENGTH_SHORT).show();
+        if (bindService(intent, mConnection, Context.BIND_AUTO_CREATE)) {
+            mShouldUnbind = true;
+        }
+    }
+
+    void doUnbindService() {
+        if (mShouldUnbind) {
+            // Release information about the service's state.
+            unbindService(mConnection);
+            mShouldUnbind = false;
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        doUnbindService();
+    }
 }
 

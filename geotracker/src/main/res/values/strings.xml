@@ -11,4 +11,6 @@
     <string name="service_description">A service that sends your location to the central server.</string>
     <string name="general_badness">The ID or password are wrong.</string>
     <string name="title_activity_login">Sign In</string>
+    <string name="ip_address">IP Address</string>
+    <string name="my_ip">192.168.1.16</string>
 </resources>
